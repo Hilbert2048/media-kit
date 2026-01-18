@@ -17,6 +17,7 @@ import 'tests/08.screenshot.dart';
 import 'tests/09.seamless.dart';
 import 'tests/10.programmatic_fullscreen.dart';
 import 'tests/11.video_view_parameters.dart';
+import 'tests/12.preload_test.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -106,8 +107,7 @@ class PrimaryScreen extends StatelessWidget {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) =>
-                        const SinglePlayerMultipleVideoScreen(),
+                    builder: (context) => const SinglePlayerMultipleVideoScreen(),
                   ),
                 );
               },
@@ -122,8 +122,7 @@ class PrimaryScreen extends StatelessWidget {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) =>
-                      const MultiplePlayerMultipleVideoScreen(),
+                  builder: (context) => const MultiplePlayerMultipleVideoScreen(),
                 ),
               );
             },
@@ -246,6 +245,22 @@ class PrimaryScreen extends StatelessWidget {
               );
             },
           ),
+          if (!UniversalPlatform.isWeb)
+            ListTile(
+              title: const Text(
+                'preload_test.dart',
+                style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold, color: Colors.blue),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const PreloadTest(),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );

@@ -27,3 +27,6 @@ export 'package:media_kit/src/player/player.dart';
 
 export 'package:media_kit/src/player/native/player/player.dart';
 export 'package:media_kit/src/player/web/player/player.dart';
+
+// Preload functionality
+export 'package:media_kit/src/preload/media_kit_preloader.dart';
