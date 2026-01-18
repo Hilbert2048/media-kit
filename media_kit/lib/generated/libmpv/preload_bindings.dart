@@ -13,7 +13,8 @@ enum MpvPreloadStatus {
   loading(1),
   ready(2),
   error(3),
-  cached(4);
+  cached(4),
+  detached(5); // Demuxer detached to player, can be recycled
 
   const MpvPreloadStatus(this.value);
   final int value;
@@ -154,4 +155,30 @@ class MPVPreload {
           void Function(
               ffi.Pointer<
                   ffi.NativeFunction<ffi.Void Function(ffi.Pointer<ffi.Char>, ffi.Pointer<MpvPreloadInfo>)>>)>();
+
+  /// Set maximum number of preload entries
+  /// Returns 0 on success, -1 on error
+  int mpv_preload_set_max_entries(int newMax) {
+    return _mpv_preload_set_max_entries(newMax);
+  }
+
+  late final _mpv_preload_set_max_entries =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function(ffi.Int32)>>('mpv_preload_set_max_entries')
+          .asFunction<int Function(int)>();
+
+  /// Get current maximum number of preload entries
+  int mpv_preload_get_max_entries() {
+    return _mpv_preload_get_max_entries();
+  }
+
+  late final _mpv_preload_get_max_entries =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function()>>('mpv_preload_get_max_entries').asFunction<int Function()>();
+
+  /// Get number of currently active preload entries
+  int mpv_preload_get_active_count() {
+    return _mpv_preload_get_active_count();
+  }
+
+  late final _mpv_preload_get_active_count =
+      _lookup<ffi.NativeFunction<ffi.Int32 Function()>>('mpv_preload_get_active_count').asFunction<int Function()>();
 }

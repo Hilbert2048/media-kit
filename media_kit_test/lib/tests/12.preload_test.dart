@@ -16,6 +16,7 @@ class _PreloadTestState extends State<PreloadTest> {
   String _status = 'Not initialized';
   String _log = '';
   DateTime? _playStartTime;
+  final _logScrollController = ScrollController();
 
   final _testUrls = [
     'https://user-images.githubusercontent.com/28951144/229373695-22f88f13-d18f-4288-9bf1-c3e078d83722.mp4',
@@ -32,31 +33,33 @@ class _PreloadTestState extends State<PreloadTest> {
 
   @override
   void dispose() {
+    _logScrollController.dispose();
     _player?.dispose();
     super.dispose();
   }
 
+  void _addLog(String message) {
+    _log += message;
+    setState(() {});
+  }
+
   Future<void> _initPreloader() async {
     try {
-      _log += 'Initializing preloader...\n';
-      setState(() {});
+      _addLog('Initializing preloader...\n');
 
       _preloader = MediaKitPreloader();
       await _preloader!.ensureInitialized();
 
       // Listen for preload completion events
       _preloader!.stream.listen((event) {
-        _log += '📢 CALLBACK: $event\n';
-        setState(() {});
+        _addLog('📢 CALLBACK: $event\n');
       });
 
       _status = 'Initialized';
-      _log += 'Preloader initialized successfully!\n';
-      setState(() {});
+      _addLog('Preloader initialized successfully!\n');
     } catch (e) {
       _status = 'Error: $e';
-      _log += 'Error initializing: $e\n';
-      setState(() {});
+      _addLog('Error initializing: $e\n');
     }
   }
 
@@ -64,13 +67,11 @@ class _PreloadTestState extends State<PreloadTest> {
     if (_preloader == null) return;
 
     try {
-      _log += 'Starting preload: ${url.length > 50 ? '${url.substring(0, 50)}...' : url}\n';
+      _addLog('Starting preload: ${url.length > 50 ? '${url.substring(0, 50)}...' : url}\n');
       final success = _preloader!.start(url);
-      _log += 'Start result: $success\n';
-      setState(() {});
+      _addLog('Start result: $success\n');
     } catch (e) {
-      _log += 'Error starting preload: $e\n';
-      setState(() {});
+      _addLog('Error starting preload: $e\n');
     }
   }
 
@@ -117,10 +118,11 @@ class _PreloadTestState extends State<PreloadTest> {
     }
   }
 
-  Future<void> _playUrl(String url) async {
+  Future<void> _playUrl(String url, {Duration? start}) async {
     try {
       _log += '\n--- PLAYING VIDEO ---\n';
       _log += 'URL: ${url.length > 50 ? '${url.substring(0, 50)}...' : url}\n';
+      _log += 'Start position: ${start?.inSeconds ?? "not set"}s\n';
       _playStartTime = DateTime.now();
       _log += 'Play start time: ${_playStartTime}\n';
 
@@ -148,8 +150,8 @@ class _PreloadTestState extends State<PreloadTest> {
         }
       });
 
-      // Open and play
-      await _player!.open(Media(url));
+      // Open and play with optional start position
+      await _player!.open(Media(url, start: start));
 
       setState(() {});
 
@@ -186,6 +188,13 @@ class _PreloadTestState extends State<PreloadTest> {
 
   @override
   Widget build(BuildContext context) {
+    // Auto-scroll log to bottom on every rebuild
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_logScrollController.hasClients) {
+        _logScrollController.jumpTo(_logScrollController.position.maxScrollExtent);
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Preload Test'),
@@ -233,12 +242,74 @@ class _PreloadTestState extends State<PreloadTest> {
                             onPressed: () => _playUrl(_testUrls[i]),
                             child: const Text('▶ Play'),
                           ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () => _playUrl(_testUrls[i], start: Duration.zero),
+                            child: const Text('▶ @0s'),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () => _playUrl(_testUrls[i], start: const Duration(seconds: 5)),
+                            child: const Text('▶ @5s'),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
               ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Text('Max Entries: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('${_preloader?.getMaxEntries() ?? "N/A"}'),
+                const SizedBox(width: 8),
+                const Text('Active: ', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('${_preloader?.getActiveCount() ?? "N/A"}'),
+                const SizedBox(width: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    final result = _preloader?.setMaxEntries(2) ?? false;
+                    _log += 'Set max entries to 2: ${result ? "OK" : "FAILED"}\n';
+                    setState(() {});
+                  },
+                  child: const Text('2'),
+                ),
+                const SizedBox(width: 4),
+                ElevatedButton(
+                  onPressed: () {
+                    final result = _preloader?.setMaxEntries(4) ?? false;
+                    _log += 'Set max entries to 4: ${result ? "OK" : "FAILED"}\n';
+                    setState(() {});
+                  },
+                  child: const Text('4'),
+                ),
+                const SizedBox(width: 4),
+                ElevatedButton(
+                  onPressed: () {
+                    final result = _preloader?.setMaxEntries(8) ?? false;
+                    _log += 'Set max entries to 8: ${result ? "OK" : "FAILED"}\n';
+                    setState(() {});
+                  },
+                  child: const Text('8'),
+                ),
+                const SizedBox(width: 4),
+                ElevatedButton(
+                  onPressed: () {
+                    final result = _preloader?.setMaxEntries(16) ?? false;
+                    _log += 'Set max entries to 16: ${result ? "OK" : "FAILED"}\n';
+                    setState(() {});
+                  },
+                  child: const Text('16'),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _clearAll,
@@ -257,6 +328,7 @@ class _PreloadTestState extends State<PreloadTest> {
                 padding: const EdgeInsets.all(8),
                 color: Colors.black12,
                 child: SingleChildScrollView(
+                  controller: _logScrollController,
                   child: SelectableText(_log, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
                 ),
               ),

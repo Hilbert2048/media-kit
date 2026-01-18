@@ -145,21 +145,22 @@ class MediaKitPreloader {
 
   // Callback invoked from C when preload status changes
   void _onPreloadCallback(ffi.Pointer<ffi.Char> urlPtr, ffi.Pointer<MpvPreloadInfo> infoPtr) {
-    final url = urlPtr.cast<Utf8>().toDartString();
-    final info = infoPtr.ref;
-    // Debug: print raw values from C struct
-    print(
-        '[DEBUG v2.1] Raw info: status=${info.status}, fw=${info.fw_bytes}, total=${info.total_bytes}, fileSize=${info.file_size}, eof=${info.eof_cached}');
-    final status = MpvPreloadStatus.fromValue(info.status);
-    _eventController.add(PreloadInfo(
-      url: url,
-      status: status,
-      fwBytes: info.fw_bytes,
-      totalBytes: info.total_bytes,
-      fileSize: info.file_size,
-      bufferedSecs: info.buffered_secs,
-      eofCached: info.eof_cached,
-    ));
+    try {
+      final url = urlPtr.cast<Utf8>().toDartString();
+      final info = infoPtr.ref;
+      final status = MpvPreloadStatus.fromValue(info.status);
+      _eventController.add(PreloadInfo(
+        url: url,
+        status: status,
+        fwBytes: info.fw_bytes,
+        totalBytes: info.total_bytes,
+        fileSize: info.file_size,
+        bufferedSecs: info.buffered_secs,
+        eofCached: info.eof_cached,
+      ));
+    } catch (e) {
+      // Ignore callback errors (can happen when entry is evicted during callback)
+    }
   }
 
   void _checkInitialized() {
@@ -229,5 +230,29 @@ class MediaKitPreloader {
   void clearAll() {
     _checkInitialized();
     _bindings!.mpv_preload_clear_all();
+  }
+
+  /// Set maximum number of preload entries.
+  ///
+  /// **IMPORTANT**: Must be called BEFORE any preload starts.
+  /// Once preload has started, this returns false and has no effect.
+  /// Call [clearAll] first if you need to change the limit after preloading.
+  ///
+  /// Returns true on success, false on error.
+  bool setMaxEntries(int newMax) {
+    _checkInitialized();
+    return _bindings!.mpv_preload_set_max_entries(newMax) == 0;
+  }
+
+  /// Get current maximum number of preload entries
+  int getMaxEntries() {
+    _checkInitialized();
+    return _bindings!.mpv_preload_get_max_entries();
+  }
+
+  /// Get number of currently active preload entries
+  int getActiveCount() {
+    _checkInitialized();
+    return _bindings!.mpv_preload_get_active_count();
   }
 }
