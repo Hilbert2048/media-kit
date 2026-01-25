@@ -28,8 +28,10 @@ import com.alexmercerind.mediakitandroidhelper.MediaKitAndroidHelper;
 /** MediaKitLibsAndroidVideoPlugin */
 public class MediaKitLibsAndroidVideoPlugin implements FlutterPlugin {
     static {
-        // DynamicLibrary.open on Dart side may not work on some ancient devices unless System.loadLibrary is called first.
+        // DynamicLibrary.open on Dart side may not work on some ancient devices unless
+        // System.loadLibrary is called first.
         try {
+            System.loadLibrary("c++_shared");
             System.loadLibrary("mpv");
         } catch (Throwable e) {
             e.printStackTrace();
@@ -40,7 +42,8 @@ public class MediaKitLibsAndroidVideoPlugin implements FlutterPlugin {
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
         Log.i("media_kit", "package:media_kit_libs_android_video attached.");
         try {
-            // Save android.content.Context for access later within MediaKitAndroidHelpers e.g. loading bundled assets.
+            // Save android.content.Context for access later within MediaKitAndroidHelpers
+            // e.g. loading bundled assets.
             MediaKitAndroidHelper.setApplicationContextJava(flutterPluginBinding.getApplicationContext());
             Log.i("media_kit", "Saved application context.");
         } catch (Throwable e) {

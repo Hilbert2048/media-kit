@@ -30,3 +30,6 @@ export 'package:media_kit/src/player/web/player/player.dart';
 
 // Preload functionality
 export 'package:media_kit/src/preload/media_kit_preloader.dart';
+
+// FFmpeg functionalities
+export 'package:media_kit/src/ffmpeg/ffmpeg.dart';

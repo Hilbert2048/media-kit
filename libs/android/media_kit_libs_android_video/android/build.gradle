@@ -56,16 +56,14 @@ task downloadDependencies(type: Exec) {
         }
         outputDir.mkdirs()
 
-        // CHANGE THIS TAG to match your GitHub Release
-        // The artifacts will be downloaded into a directory specific to this tag.
-        def tag = "v0.5.0-preload" 
+        def tag = "v0.5.2"
         def baseUrl = "https://github.com/Hilbert2048/libmpv-android-video-build/releases/download/${tag}"
-        // Download 'encoders-gpl' jars which include FFmpeg CLI features and GPL codecs.
+
         def filesToDownload = [
-            ["url": "${baseUrl}/default-arm64-v8a.jar", "sha256": "b8a2a8de3af6988e8920982d9ae9854611c38c52b6f3a32ae06fa2e36c6f498f", "destination": file("$buildDir/${tag}/default-arm64-v8a.jar")],
-            ["url": "${baseUrl}/default-armeabi-v7a.jar", "sha256": "fe84f6434e4c2d7feadd605dafca4faca3822403f6f2f872fd41070652579c55", "destination": file("$buildDir/${tag}/default-armeabi-v7a.jar")],
-            ["url": "${baseUrl}/default-x86.jar", "sha256": "a33bdd42aa00095bd8fe2923aae99e0bdad0bd9fea9457d829fbbcf433339aa2", "destination": file("$buildDir/${tag}/default-x86.jar")],
-            ["url": "${baseUrl}/default-x86_64.jar", "sha256": "ee0050a07811c5e4803b103b35937f1b002a53cd5d655b33004c871051f2b941", "destination": file("$buildDir/${tag}/default-x86_64.jar")]
+            ["url": "${baseUrl}/default-arm64-v8a.jar", "sha256": "8cf9c794c4b40077312f9d5ca62331aacce4219bf1f113d22a63431b3026d477", "destination": file("$buildDir/${tag}/default-arm64-v8a.jar")],
+            ["url": "${baseUrl}/default-armeabi-v7a.jar", "sha256": "c798d00152b07fe42513ec3b4e577480797a6780c7c6759b7c388dce8c3c56de", "destination": file("$buildDir/${tag}/default-armeabi-v7a.jar")],
+            ["url": "${baseUrl}/default-x86.jar", "sha256": "505563b1ff8e71dfa85723f8c9f9568a6b1299ccd7b73250a88ef253ae05f70d", "destination": file("$buildDir/${tag}/default-x86.jar")],
+            ["url": "${baseUrl}/default-x86_64.jar", "sha256": "62cca00b0cba177896036c27ce938920a95a8abbf9a56425ba0273173fed9b45", "destination": file("$buildDir/${tag}/default-x86_64.jar")]
         ]
         filesToDownload.each { fileInfo ->
             def destFile = fileInfo.destination
