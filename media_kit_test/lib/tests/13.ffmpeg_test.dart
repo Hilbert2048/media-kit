@@ -189,6 +189,16 @@ class _FFmpegTestState extends State<FFmpegTest> {
                     _runCommand();
                   },
                 ),
+                if (_appDocDir != null)
+                  ActionChip(
+                    label: const Text('HLS -> MP4 (5s)'),
+                    onPressed: () {
+                      _commandController.text =
+                          '-i https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8 -t 5 -c copy -y $_appDocDir/output.mp4';
+                      // Auto-run or let user run? Let user run to verify.
+                      // _runCommand();
+                    },
+                  ),
               ],
             ),
             const SizedBox(height: 16),
