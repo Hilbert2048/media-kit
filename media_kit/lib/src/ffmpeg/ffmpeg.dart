@@ -120,7 +120,10 @@ abstract class FFmpeg {
     final execute = dylib.lookupFunction<FFmpegExecuteC, FFmpegExecuteDart>(
         'FFToolsFFIExecuteFFmpeg');
 
-    final fullArgs = ['ffmpeg', ...args];
+    // Do NOT prepend 'ffmpeg' to args. The native side expects only arguments.
+    // ffmpeg_cmd.c passes (argc - 1, argv + 1), implying it skips prog name.
+    // FFToolsFFIExecuteFFmpeg passes args directly to ffmpeg_execute_with_callbacks.
+    final fullArgs = [...args];
     final fullArgv = calloc<Pointer<Utf8>>(fullArgs.length);
     for (var i = 0; i < fullArgs.length; i++) {
       fullArgv[i] = fullArgs[i].toNativeUtf8();
