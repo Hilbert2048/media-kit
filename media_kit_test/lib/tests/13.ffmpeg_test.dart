@@ -38,11 +38,26 @@ class _FFmpegTestState extends State<FFmpegTest> {
           .where((s) => s.isNotEmpty)
           .toList();
 
-      await FFmpeg.execute(args);
+      await FFmpeg.execute(
+        args,
+        onLog: (log) {
+          if (mounted) {
+            setState(() {
+              _log += '$log\n';
+            });
+            // Scroll to bottom
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_scrollController.hasClients) {
+                // Animate or jump to bottom
+                _scrollController
+                    .jumpTo(_scrollController.position.maxScrollExtent);
+              }
+            });
+          }
+        },
+      );
 
       _log += '--- EXECUTION COMPLETED ---\n';
-      _log += 'Check system console/logcat for output.\n';
-      _log += 'Support for capturing stdout is pending implementation.\n';
     } catch (e) {
       _log += 'Error executing command: $e\n';
     } finally {

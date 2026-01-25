@@ -83,7 +83,9 @@ abstract class FFmpeg {
   /// ```dart
   /// await FFmpeg.execute(['-i', 'input.mp4', 'output.mp3']);
   /// ```
-  static Future<int> execute(List<String> args) async {
+  /// [onLog] is an optional callback to receive log messages.
+  static Future<int> execute(List<String> args,
+      {void Function(String log)? onLog}) async {
     // Ensure native library is initialized.
     try {
       NativeLibrary.ensureInitialized();
@@ -93,11 +95,11 @@ abstract class FFmpeg {
     final port = ReceivePort();
     final nativePort = port.sendPort.nativePort;
 
-    return _executeWithPort(libPath, args, nativePort, port);
+    return _executeWithPort(libPath, args, nativePort, port, onLog);
   }
 
-  static Future<int> _executeWithPort(
-      String libPath, List<String> args, int nativePort, ReceivePort port) {
+  static Future<int> _executeWithPort(String libPath, List<String> args,
+      int nativePort, ReceivePort port, void Function(String log)? onLog) {
     final dylib = DynamicLibrary.open(libPath);
 
     // Initialize Dart API DL if needed
@@ -147,11 +149,15 @@ abstract class FFmpeg {
             final log = ptr.ref.data.log_val;
             if (log.message != nullptr) {
               final msg = log.message.toDartString();
+              String logMsg;
               if (msg.endsWith('\n')) {
-                print('[FFmpeg] ${msg.substring(0, msg.length - 1)}');
+                logMsg = msg.substring(0, msg.length - 1);
               } else {
-                print('[FFmpeg] $msg');
+                logMsg = msg;
               }
+              print('[FFmpeg] $logMsg');
+              onLog?.call(logMsg);
+
               // Free the message string allocated by C
               _free(log.message.cast());
             }
