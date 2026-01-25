@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:path_provider/path_provider.dart';
 
 class FFmpegTest extends StatefulWidget {
   const FFmpegTest({super.key});
@@ -14,6 +15,34 @@ class _FFmpegTestState extends State<FFmpegTest> {
   String _log = '';
   final ScrollController _scrollController = ScrollController();
   bool _isExecuting = false;
+  String? _appDocDir;
+
+  @override
+  void initState() {
+    super.initState();
+    _initAppDocDir();
+  }
+
+  Future<void> _initAppDocDir() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      if (mounted) {
+        setState(() {
+          _appDocDir = dir.path;
+          _log = 'App Documents Directory: $_appDocDir\n\n'
+                  'You can use this path for output files.\n'
+                  'Example: -i http://... $_appDocDir/output.mp4\n\n' +
+              _log;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _log += 'Failed to get app doc dir: $e\n\n';
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
