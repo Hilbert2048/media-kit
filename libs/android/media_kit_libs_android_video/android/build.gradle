@@ -56,24 +56,28 @@ task downloadDependencies(type: Exec) {
         }
         outputDir.mkdirs()
 
-        // Download all *.jar dependencies & verify their MD5 checksums.
+        // CHANGE THIS TAG to match your GitHub Release
+        // The artifacts will be downloaded into a directory specific to this tag.
+        def tag = "vnext" 
+        def baseUrl = "https://github.com/Hilbert2048/libmpv-android-video-build/releases/download/${tag}"
+
+        // Download 'encoders-gpl' jars which include FFmpeg CLI features and GPL codecs.
         def filesToDownload = [
-            ["url": "https://github.com/media-kit/libmpv-android-video-build/releases/download/v1.1.7/default-arm64-v8a.jar", "md5": "83df25b61193af8fa815e373143ac9af", "destination": file("$buildDir/v1.1.7/default-arm64-v8a.jar")],
-            ["url": "https://github.com/media-kit/libmpv-android-video-build/releases/download/v1.1.7/default-armeabi-v7a.jar", "md5": "22e21526fefc0a2b8f17adbec9f57590", "destination": file("$buildDir/v1.1.7/default-armeabi-v7a.jar")],
-            ["url": "https://github.com/media-kit/libmpv-android-video-build/releases/download/v1.1.7/default-x86_64.jar", "md5": "6fa26bf0459b11f1c0b0dbc29e5b940d", "destination": file("$buildDir/v1.1.7/default-x86_64.jar")],
-            ["url": "https://github.com/media-kit/libmpv-android-video-build/releases/download/v1.1.7/default-x86.jar", "md5": "0d742b756dc9d1fcd84ea271d8b68f32", "destination": file("$buildDir/v1.1.7/default-x86.jar")]
+            ["url": "${baseUrl}/encoders-gpl-arm64-v8a.jar", "sha256": "28353d82f95eeadd592bc99ba329b8fab6c7b0faba2e95f04c8f358525b05d6d", "destination": file("$buildDir/${tag}/encoders-gpl-arm64-v8a.jar")],
+            ["url": "${baseUrl}/encoders-gpl-armeabi-v7a.jar", "sha256": "38f518e25497db3014c0987c7f13128bd46203cfeb65266b24b8bff58cf0d247", "destination": file("$buildDir/${tag}/encoders-gpl-armeabi-v7a.jar")],
+            ["url": "${baseUrl}/encoders-gpl-x86_64.jar", "sha256": "7e6e67f189888ac705916731103f2f72f754fbbb8d5c5870527fc26d38a1a71f", "destination": file("$buildDir/${tag}/encoders-gpl-x86_64.jar")],
+            ["url": "${baseUrl}/encoders-gpl-x86.jar", "sha256": "c67eeda35905ba38194dabb9151d06fdf107c6ff2420ed065d1b2b5126632cbc", "destination": file("$buildDir/${tag}/encoders-gpl-x86.jar")]
         ]
 
         filesToDownload.each { fileInfo ->
             def destFile = fileInfo.destination
             if (destFile.exists()) {
-                def calculatedMD5 = MessageDigest.getInstance("MD5").digest(Files.readAllBytes(destFile.toPath())).encodeHex().toString()
+                def calculatedHash = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(destFile.toPath())).encodeHex().toString()
 
-                if (calculatedMD5 != fileInfo.md5) {
+                if (calculatedHash != fileInfo.sha256) {
                     destFile.delete()
-                    println "MD5 mismatch. File deleted: ${destFile}"
+                    println "Checksum mismatch. File deleted: ${destFile}"
                 }
-
             }
 
             if (!destFile.exists()) {
@@ -83,9 +87,9 @@ task downloadDependencies(type: Exec) {
                     os << new URL(fileInfo.url).openStream()
                 }
 
-                def calculatedMD5 = MessageDigest.getInstance("MD5").digest(Files.readAllBytes(destFile.toPath())).encodeHex().toString()
-                if (calculatedMD5 != fileInfo.md5) {
-                    throw new GradleException("MD5 verification failed for ${destFile}")
+                def calculatedHash = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(destFile.toPath())).encodeHex().toString()
+                if (calculatedHash != fileInfo.sha256) {
+                    throw new GradleException("SHA-256 verification failed for ${destFile}")
                 }
             }
 
