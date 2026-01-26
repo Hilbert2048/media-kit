@@ -18,6 +18,7 @@ import 'tests/09.seamless.dart';
 import 'tests/10.programmatic_fullscreen.dart';
 import 'tests/11.video_view_parameters.dart';
 import 'tests/12.preload_test.dart';
+import 'tests/13.ffmpeg_test.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -107,7 +108,8 @@ class PrimaryScreen extends StatelessWidget {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (context) => const SinglePlayerMultipleVideoScreen(),
+                    builder: (context) =>
+                        const SinglePlayerMultipleVideoScreen(),
                   ),
                 );
               },
@@ -122,7 +124,8 @@ class PrimaryScreen extends StatelessWidget {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => const MultiplePlayerMultipleVideoScreen(),
+                  builder: (context) =>
+                      const MultiplePlayerMultipleVideoScreen(),
                 ),
               );
             },
@@ -249,7 +252,10 @@ class PrimaryScreen extends StatelessWidget {
             ListTile(
               title: const Text(
                 'preload_test.dart',
-                style: TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold, color: Colors.blue),
+                style: TextStyle(
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -257,6 +263,25 @@ class PrimaryScreen extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const PreloadTest(),
+                  ),
+                );
+              },
+            ),
+          if (!UniversalPlatform.isWeb)
+            ListTile(
+              title: const Text(
+                'ffmpeg_test.dart',
+                style: TextStyle(
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purple),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const FFmpegTest(),
                   ),
                 );
               },

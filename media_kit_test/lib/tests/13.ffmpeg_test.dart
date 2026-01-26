@@ -197,12 +197,40 @@ class _FFmpegTestState extends State<FFmpegTest> {
                     _runCommand();
                   },
                 ),
+                ActionChip(
+                  label: const Text('-decoders'),
+                  onPressed: () {
+                    _commandController.text = '-decoders';
+                    _runCommand();
+                  },
+                ),
+                ActionChip(
+                  label: const Text('-encoders'),
+                  onPressed: () {
+                    _commandController.text = '-encoders';
+                    _runCommand();
+                  },
+                ),
+                ActionChip(
+                  label: const Text('-filters'),
+                  onPressed: () {
+                    _commandController.text = '-filters';
+                    _runCommand();
+                  },
+                ),
+                ActionChip(
+                  label: const Text('-protocols'),
+                  onPressed: () {
+                    _commandController.text = '-protocols';
+                    _runCommand();
+                  },
+                ),
                 if (_appDocDir != null)
                   ActionChip(
                     label: const Text('HLS -> MP4 (5s)'),
                     onPressed: () {
                       _commandController.text =
-                          '-i https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8 -c copy $_appDocDir/output.mkv';
+                          '-i https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8 -c copy $_appDocDir/output.mp4';
                       // Auto-run or let user run? Let user run to verify.
                       // _runCommand();
                     },
