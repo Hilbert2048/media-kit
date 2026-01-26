@@ -27,6 +27,9 @@ Frameworks/*.xcframework: .cache/xcframeworks/libmpv-xcframeworks-ios-universal.
 	mkdir -p Frameworks
 	rm -rf Frameworks/*.xcframework
 	${TAR} ${TAR_WILDCARDS_FLAG} -xvf .cache/xcframeworks/libmpv-xcframeworks-ios-universal.tar.gz --strip-components 1 -C Frameworks
+	mv Frameworks/Mpv.xcframework/unknown-arm64 Frameworks/Mpv.xcframework/ios-arm64
+	${SED} -i ${SED_INPLACE_FLAG} 's/unknown-arm64/ios-arm64/g' Frameworks/Mpv.xcframework/Info.plist
+	${SED} -i ${SED_INPLACE_FLAG} 's/>unknown</>ios</g' Frameworks/Mpv.xcframework/Info.plist
 	touch Frameworks/*.xcframework
 
 Frameworks/.symlinks: Frameworks/*.xcframework
