@@ -7,12 +7,16 @@ library;
 import 'dart:async';
 import 'dart:ffi' as ffi;
 
-import 'package:ffi/ffi.dart';
+import 'package:media_kit/ffi/ffi.dart';
+
+import 'dart:io';
+import 'package:uri_parser/uri_parser.dart';
 
 import 'package:media_kit/generated/libmpv/preload_bindings.dart';
 import 'package:media_kit/src/player/native/core/native_library.dart';
 
-export 'package:media_kit/generated/libmpv/preload_bindings.dart' show MpvPreloadStatus;
+export 'package:media_kit/generated/libmpv/preload_bindings.dart'
+    show MpvPreloadStatus;
 
 /// Configuration options for preloading
 class PreloadOptions {
@@ -110,10 +114,13 @@ class MediaKitPreloader {
   bool _initialized = false;
 
   // Stream for preload completion events
-  final StreamController<PreloadInfo> _eventController = StreamController<PreloadInfo>.broadcast();
+  final StreamController<PreloadInfo> _eventController =
+      StreamController<PreloadInfo>.broadcast();
 
   // NativeCallable for C callback
-  ffi.NativeCallable<ffi.Void Function(ffi.Pointer<ffi.Char>, ffi.Pointer<MpvPreloadInfo>)>? _nativeCallback;
+  ffi.NativeCallable<
+      ffi.Void Function(
+          ffi.Pointer<ffi.Char>, ffi.Pointer<MpvPreloadInfo>)>? _nativeCallback;
 
   /// Stream of preload completion events
   Stream<PreloadInfo> get stream => _eventController.stream;
@@ -134,8 +141,9 @@ class MediaKitPreloader {
     _bindings = MPVPreload(libmpv);
 
     // Set up callback
-    _nativeCallback =
-        ffi.NativeCallable<ffi.Void Function(ffi.Pointer<ffi.Char>, ffi.Pointer<MpvPreloadInfo>)>.listener(
+    _nativeCallback = ffi.NativeCallable<
+        ffi.Void Function(
+            ffi.Pointer<ffi.Char>, ffi.Pointer<MpvPreloadInfo>)>.listener(
       _onPreloadCallback,
     );
     _bindings!.mpv_preload_set_callback(_nativeCallback!.nativeFunction);
@@ -144,7 +152,8 @@ class MediaKitPreloader {
   }
 
   // Callback invoked from C when preload status changes
-  void _onPreloadCallback(ffi.Pointer<ffi.Char> urlPtr, ffi.Pointer<MpvPreloadInfo> infoPtr) {
+  void _onPreloadCallback(
+      ffi.Pointer<ffi.Char> urlPtr, ffi.Pointer<MpvPreloadInfo> infoPtr) {
     try {
       final url = urlPtr.cast<Utf8>().toDartString();
       final info = infoPtr.ref;
@@ -175,7 +184,8 @@ class MediaKitPreloader {
   bool start(String url, {PreloadOptions options = const PreloadOptions()}) {
     _checkInitialized();
 
-    final urlPtr = url.toNativeUtf8().cast<ffi.Char>();
+    final sanitizedUrl = _sanitizeUri(url);
+    final urlPtr = sanitizedUrl.toNativeUtf8().cast<ffi.Char>();
     final optsPtr = calloc<MpvPreloadOptions>();
 
     try {
@@ -194,7 +204,8 @@ class MediaKitPreloader {
   PreloadInfo getInfo(String url) {
     _checkInitialized();
 
-    final urlPtr = url.toNativeUtf8().cast<ffi.Char>();
+    final sanitizedUrl = _sanitizeUri(url);
+    final urlPtr = sanitizedUrl.toNativeUtf8().cast<ffi.Char>();
     final infoPtr = calloc<MpvPreloadInfo>();
 
     try {
@@ -217,7 +228,8 @@ class MediaKitPreloader {
   bool cancel(String url) {
     _checkInitialized();
 
-    final urlPtr = url.toNativeUtf8().cast<ffi.Char>();
+    final sanitizedUrl = _sanitizeUri(url);
+    final urlPtr = sanitizedUrl.toNativeUtf8().cast<ffi.Char>();
     try {
       final result = _bindings!.mpv_preload_cancel(urlPtr);
       return result == 0;
@@ -254,5 +266,27 @@ class MediaKitPreloader {
   int getActiveCount() {
     _checkInitialized();
     return _bindings!.mpv_preload_get_active_count();
+  }
+
+  String _sanitizeUri(String uri) {
+    // Append \\?\ prefix on Windows to support long file paths.
+    final parser = URIParser(uri);
+    switch (parser.type) {
+      case URIType.file:
+        return _addPrefix(parser.file!.path);
+      case URIType.directory:
+        return _addPrefix(parser.directory!.path);
+      case URIType.network:
+        return parser.uri!.toString();
+      default:
+        return uri;
+    }
+  }
+
+  String _addPrefix(String path) {
+    if (Platform.isWindows && !path.startsWith('\\\\?\\')) {
+      return '\\\\?\\$path';
+    }
+    return path;
   }
 }
