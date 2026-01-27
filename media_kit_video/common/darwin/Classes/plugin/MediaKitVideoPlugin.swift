@@ -61,6 +61,8 @@ public class MediaKitVideoPlugin: NSObject, FlutterPlugin {
       handleEnterNativeFullscreenMethodCall(call.arguments, result)
     case "Utils.ExitNativeFullscreen":
       handleExitNativeFullscreenMethodCall(call.arguments, result)
+    case "Utils.IsEmulator":
+      handleIsEmulatorMethodCall(call.arguments, result)
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -163,6 +165,18 @@ public class MediaKitVideoPlugin: NSObject, FlutterPlugin {
     }
 
     utils?.exitNativeFullscreen()
+    utils?.exitNativeFullscreen()
     result(nil)
+  }
+
+  private func handleIsEmulatorMethodCall(
+    _: Any?,
+    _ result: FlutterResult
+  ) {
+    #if targetEnvironment(simulator)
+      result(true)
+    #else
+      result(false)
+    #endif
   }
 }
