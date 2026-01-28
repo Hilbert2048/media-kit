@@ -16,7 +16,8 @@ bool isFullscreen(BuildContext context) =>
     FullscreenInheritedWidget.maybeOf(context) != null;
 
 /// Makes the [Video] present in the current [BuildContext] enter fullscreen.
-Future<void> enterFullscreen(BuildContext context) {
+Future<void> enterFullscreen(BuildContext context,
+    {bool useRootNavigator = false}) {
   return lock.synchronized(() async {
     if (!isFullscreen(context)) {
       if (context.mounted) {
@@ -25,7 +26,7 @@ Future<void> enterFullscreen(BuildContext context) {
         final videoViewParametersNotifierValue =
             videoViewParametersNotifier(context);
         final controllerValue = controller(context);
-        Navigator.of(context, rootNavigator: true).push(
+        Navigator.of(context, rootNavigator: useRootNavigator).push(
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => Material(
               child: VideoControlsThemeDataInjector(
@@ -107,11 +108,12 @@ Future<void> exitFullscreen(BuildContext context) {
 }
 
 /// Toggles fullscreen for the [Video] present in the current [BuildContext].
-Future<void> toggleFullscreen(BuildContext context) {
+Future<void> toggleFullscreen(BuildContext context,
+    {bool useRootNavigator = false}) {
   if (isFullscreen(context)) {
     return exitFullscreen(context);
   } else {
-    return enterFullscreen(context);
+    return enterFullscreen(context, useRootNavigator: useRootNavigator);
   }
 }
 

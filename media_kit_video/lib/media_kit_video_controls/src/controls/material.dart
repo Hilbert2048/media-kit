@@ -1895,17 +1895,22 @@ class MaterialFullscreenButton extends StatelessWidget {
   /// Overriden icon color for [MaterialFullscreenButton].
   final Color? iconColor;
 
+  /// Whether to use root navigator for fullscreen.
+  final bool useRootNavigator;
+
   const MaterialFullscreenButton({
     super.key,
     this.icon,
     this.iconSize,
     this.iconColor,
+    this.useRootNavigator = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      onPressed: () => toggleFullscreen(context),
+      onPressed: () =>
+          toggleFullscreen(context, useRootNavigator: useRootNavigator),
       icon: icon ??
           (isFullscreen(context)
               ? const Icon(Icons.fullscreen_exit)
