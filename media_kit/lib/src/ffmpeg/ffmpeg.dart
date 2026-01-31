@@ -9,6 +9,7 @@ import 'dart:isolate';
 import 'dart:async'; // Added for Completer
 import 'package:ffi/ffi.dart';
 import 'package:media_kit/src/player/native/core/native_library.dart';
+import 'package:media_kit/src/ffmpeg/ffmpeg_session.dart';
 
 typedef FFmpegExecuteC = Void Function(
     Int64 port, Int32 argc, Pointer<Pointer<Utf8>> argv);
@@ -176,4 +177,140 @@ abstract class FFmpeg {
 
     return completer.future;
   }
+
+  /// Executes an FFmpeg command asynchronously with a single command string.
+  ///
+  /// [command] is the command string to be executed.
+  /// [completeCallback] is an optional callback to receive the execution result.
+  /// [logCallback] is an optional callback to receive log messages.
+  /// [statisticsCallback] is an optional callback to receive execution statistics.
+  ///
+  /// Returns a [Future] that completes with the [FFmpegSession] of the execution.
+  static Future<FFmpegSession> executeAsync(
+    String command, [
+    FFmpegSessionCompleteCallback? completeCallback = null,
+    LogCallback? logCallback = null,
+    StatisticsCallback? statisticsCallback = null,
+  ]) async {
+    final args = parseArguments(command);
+    final session = FFmpegSession(args);
+    session.start();
+
+    // Map the internal onLog callback to the public LogCallback
+    void Function(String)? internalOnLog;
+    if (logCallback != null) {
+      internalOnLog = (String msg) {
+        final log = Log(session.sessionId, 0, msg);
+        logCallback(log);
+        session.addLog(msg);
+      };
+    } else {
+      internalOnLog = (String msg) {
+        session.addLog(msg);
+      };
+    }
+
+    // Launch execution
+    final executionFuture = FFmpeg.execute(args, onLog: (log) {
+      internalOnLog?.call(log);
+    });
+
+    // Handle completion
+    executionFuture.then((returnCode) {
+      session.complete(returnCode);
+      completeCallback?.call(session);
+    });
+
+    return session;
+  }
+
+  /// Parses a command string into a list of arguments.
+  static List<String> parseArguments(String command) {
+    final arguments = <String>[];
+    String? currentArgument;
+    bool inQuote = false;
+    String? quoteChar;
+
+    for (int i = 0; i < command.length; i++) {
+      final char = command[i];
+
+      if (inQuote) {
+        if (char == quoteChar) {
+          inQuote = false;
+          quoteChar = null;
+          arguments.add(currentArgument ?? '');
+          currentArgument = null; // Reset for next arg
+        } else {
+          currentArgument = (currentArgument ?? '') + char;
+        }
+      } else {
+        if (char == '"' || char == '\'') {
+          inQuote = true;
+          quoteChar = char;
+          if (currentArgument == null) {
+            currentArgument = '';
+          }
+        } else if (char == ' ') {
+          if (currentArgument != null) {
+            arguments.add(currentArgument);
+            currentArgument = null;
+          }
+        } else {
+          currentArgument = (currentArgument ?? '') + char;
+        }
+      }
+    }
+    if (currentArgument != null) {
+      arguments.add(currentArgument);
+    }
+    return arguments;
+  }
+}
+
+// ----------------------------------------------------------------------------
+// FFmpegKit Compatibility Layer
+// ----------------------------------------------------------------------------
+
+typedef FFmpegSessionCompleteCallback = void Function(FFmpegSession session);
+typedef LogCallback = void Function(Log log);
+typedef StatisticsCallback = void Function(Statistics statistics);
+
+class Log {
+  final int sessionId;
+  final int level;
+  final String message;
+
+  Log(this.sessionId, this.level, this.message);
+
+  String getMessage() => message;
+}
+
+class Statistics {
+  final int sessionId;
+  final int videoFrameNumber;
+  final double videoFps;
+  final double videoQuality;
+  final int size;
+  final double time;
+  final double bitrate;
+  final double speed;
+
+  Statistics(
+    this.sessionId,
+    this.videoFrameNumber,
+    this.videoFps,
+    this.videoQuality,
+    this.size,
+    this.time,
+    this.bitrate,
+    this.speed,
+  );
+
+  int getVideoFrameNumber() => videoFrameNumber;
+  double getVideoFps() => videoFps;
+  double getVideoQuality() => videoQuality;
+  int getSize() => size;
+  double getTime() => time;
+  double getBitrate() => bitrate;
+  double getSpeed() => speed;
 }
