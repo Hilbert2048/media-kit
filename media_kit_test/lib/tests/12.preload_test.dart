@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -67,7 +69,8 @@ class _PreloadTestState extends State<PreloadTest> {
     if (_preloader == null) return;
 
     try {
-      _addLog('Starting preload: ${url.length > 50 ? '${url.substring(0, 50)}...' : url}\n');
+      _addLog(
+          'Starting preload: ${url.length > 50 ? '${url.substring(0, 50)}...' : url}\n');
       final success = _preloader!.start(url);
       _addLog('Start result: $success\n');
     } catch (e) {
@@ -145,7 +148,8 @@ class _PreloadTestState extends State<PreloadTest> {
       _player!.stream.buffering.listen((buffering) {
         if (!buffering && _playStartTime != null) {
           final elapsed = DateTime.now().difference(_playStartTime!);
-          _log += '⏱ Buffering complete! Elapsed: ${elapsed.inMilliseconds}ms\n';
+          _log +=
+              '⏱ Buffering complete! Elapsed: ${elapsed.inMilliseconds}ms\n';
           setState(() {});
         }
       });
@@ -186,12 +190,85 @@ class _PreloadTestState extends State<PreloadTest> {
     }
   }
 
+  Future<void> _stressCycle(String url) async {
+    _log += '\n=== STARTING STRESS CYCLE ===\n';
+    _log += 'Goal: Test demuxer reuse reliability for $url\n';
+
+    // Ensure preload
+    if (_preloader?.getInfo(url).isCached != true) {
+      _startPreload(url);
+      // Wait for Cached (polling)
+      int retries = 0;
+      _log += 'Waiting for preload cached...\n';
+      // Wait up to 10 seconds (50 * 200ms) for caching
+      while (retries < 50) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        final info = _preloader?.getInfo(url);
+        if (info?.isCached == true) {
+          _log += 'Preload cached! (after ${retries * 200}ms)\n';
+          break;
+        }
+        if (retries % 10 == 0) _log += '... status: ${info?.status}\n';
+        retries++;
+      }
+    } else {
+      _log += 'Preload already cached.\n';
+    }
+
+    for (int i = 1; i <= 3; i++) {
+      _log += '\n[Cycle $i] Playing...\n';
+      setState(() {});
+
+      await _playUrl(url);
+
+      // Event-driven verification: Wait for 2 seconds of actual playback
+      _log += 'Waiting for playback progress > 2s...\n';
+      setState(() {});
+
+      final completer = Completer<void>();
+      final sub = _player!.stream.position.listen((position) {
+        if (position.inSeconds >= 2 && !completer.isCompleted) {
+          completer.complete();
+        }
+      });
+
+      try {
+        await completer.future.timeout(const Duration(seconds: 10));
+        _log += '[Cycle $i] ✅ PASS: Playback confirmed.\n';
+      } catch (e) {
+        _log += '[Cycle $i] ❌ FAIL: Timeout (Black Screen?)\n';
+      }
+      await sub.cancel();
+
+      _log += '[Cycle $i] Stopping...\n';
+
+      // We need to close the player programmatically to simulate "Stop" and recycle
+      if (mounted) {
+        // Close dialog if open
+        Navigator.of(context, rootNavigator: true)
+            .popUntil((route) => route.settings.name != 'VideoDialog');
+
+        // Dispose player to trigger recycle
+        await _player?.dispose();
+        _player = null;
+        _videoController = null;
+      }
+
+      _log += '[Cycle $i] Stopped/Recycled. Waiting 2s...\n';
+      setState(() {});
+      await Future.delayed(const Duration(seconds: 2));
+    }
+    _log += '=== STRESS CYCLE COMPLETE ===\n';
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     // Auto-scroll log to bottom on every rebuild
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_logScrollController.hasClients) {
-        _logScrollController.jumpTo(_logScrollController.position.maxScrollExtent);
+        _logScrollController
+            .jumpTo(_logScrollController.position.maxScrollExtent);
       }
     });
 
@@ -199,142 +276,179 @@ class _PreloadTestState extends State<PreloadTest> {
       appBar: AppBar(
         title: const Text('Preload Test'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Status: $_status', style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            const Text('Test URLs:', style: TextStyle(fontWeight: FontWeight.bold)),
-            for (int i = 0; i < _testUrls.length; i++)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
+        children: [
+          Expanded(
+            flex: 6,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Status: $_status',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  const Text('Test URLs:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  for (int i = 0; i < _testUrls.length; i++)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                                'URL ${i + 1}: ${_testUrls[i].length > 50 ? '${_testUrls[i].substring(0, 50)}...' : _testUrls[i]}',
+                                style: const TextStyle(fontSize: 12)),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () => _startPreload(_testUrls[i]),
+                                  child: const Text('Preload'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => _checkStatus(_testUrls[i]),
+                                  child: const Text('Status'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => _cancelPreload(_testUrls[i]),
+                                  child: const Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  onPressed: () => _playUrl(_testUrls[i]),
+                                  child: const Text('▶ Play'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  onPressed: () => _playUrl(_testUrls[i],
+                                      start: Duration.zero),
+                                  child: const Text('▶ @0s'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  onPressed: () => _playUrl(_testUrls[i],
+                                      start: const Duration(seconds: 5)),
+                                  child: const Text('▶ @5s'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.redAccent,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  onPressed: () => _stressCycle(_testUrls[i]),
+                                  child: const Text('⚡ Stress'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      Text(
-                          'URL ${i + 1}: ${_testUrls[i].length > 50 ? '${_testUrls[i].substring(0, 50)}...' : _testUrls[i]}',
-                          style: const TextStyle(fontSize: 12)),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () => _startPreload(_testUrls[i]),
-                            child: const Text('Preload'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => _checkStatus(_testUrls[i]),
-                            child: const Text('Status'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => _cancelPreload(_testUrls[i]),
-                            child: const Text('Cancel'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () => _playUrl(_testUrls[i]),
-                            child: const Text('▶ Play'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () => _playUrl(_testUrls[i], start: Duration.zero),
-                            child: const Text('▶ @0s'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orange,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () => _playUrl(_testUrls[i], start: const Duration(seconds: 5)),
-                            child: const Text('▶ @5s'),
-                          ),
-                        ],
+                      const Text('Max Entries: ',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('${_preloader?.getMaxEntries() ?? "N/A"}'),
+                      const SizedBox(width: 8),
+                      const Text('Active: ',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('${_preloader?.getActiveCount() ?? "N/A"}'),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          final result = _preloader?.setMaxEntries(2) ?? false;
+                          _log +=
+                              'Set max entries to 2: ${result ? "OK" : "FAILED"}\n';
+                          setState(() {});
+                        },
+                        child: const Text('2'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          final result = _preloader?.setMaxEntries(4) ?? false;
+                          _log +=
+                              'Set max entries to 4: ${result ? "OK" : "FAILED"}\n';
+                          setState(() {});
+                        },
+                        child: const Text('4'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          final result = _preloader?.setMaxEntries(8) ?? false;
+                          _log +=
+                              'Set max entries to 8: ${result ? "OK" : "FAILED"}\n';
+                          setState(() {});
+                        },
+                        child: const Text('8'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          final result = _preloader?.setMaxEntries(16) ?? false;
+                          _log +=
+                              'Set max entries to 16: ${result ? "OK" : "FAILED"}\n';
+                          setState(() {});
+                        },
+                        child: const Text('16'),
                       ),
                     ],
                   ),
-                ),
-              ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Text('Max Entries: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text('${_preloader?.getMaxEntries() ?? "N/A"}'),
-                const SizedBox(width: 8),
-                const Text('Active: ', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text('${_preloader?.getActiveCount() ?? "N/A"}'),
-                const SizedBox(width: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    final result = _preloader?.setMaxEntries(2) ?? false;
-                    _log += 'Set max entries to 2: ${result ? "OK" : "FAILED"}\n';
-                    setState(() {});
-                  },
-                  child: const Text('2'),
-                ),
-                const SizedBox(width: 4),
-                ElevatedButton(
-                  onPressed: () {
-                    final result = _preloader?.setMaxEntries(4) ?? false;
-                    _log += 'Set max entries to 4: ${result ? "OK" : "FAILED"}\n';
-                    setState(() {});
-                  },
-                  child: const Text('4'),
-                ),
-                const SizedBox(width: 4),
-                ElevatedButton(
-                  onPressed: () {
-                    final result = _preloader?.setMaxEntries(8) ?? false;
-                    _log += 'Set max entries to 8: ${result ? "OK" : "FAILED"}\n';
-                    setState(() {});
-                  },
-                  child: const Text('8'),
-                ),
-                const SizedBox(width: 4),
-                ElevatedButton(
-                  onPressed: () {
-                    final result = _preloader?.setMaxEntries(16) ?? false;
-                    _log += 'Set max entries to 16: ${result ? "OK" : "FAILED"}\n';
-                    setState(() {});
-                  },
-                  child: const Text('16'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _clearAll,
-              child: const Text('Clear All Cache'),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Test: 1) Preload URL → 2) Wait complete → 3) Play\n'
-              'Compare startup time with/without preload!',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
-            const Text('Log:', style: TextStyle(fontWeight: FontWeight.bold)),
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                color: Colors.black12,
-                child: SingleChildScrollView(
-                  controller: _logScrollController,
-                  child: SelectableText(_log, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-                ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: _clearAll,
+                    child: const Text('Clear All Cache'),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Test: 1) Preload URL → 2) Wait complete → 3) Play\n'
+                    'Compare startup time with/without preload!',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            flex: 4,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              color: Colors.black12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Log:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      controller: _logScrollController,
+                      child: SelectableText(_log,
+                          style: const TextStyle(
+                              fontFamily: 'monospace', fontSize: 12)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
