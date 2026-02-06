@@ -1,7 +1,7 @@
 all: Frameworks/*.xcframework Frameworks/.symlinks
 
-MPV_XCFRAMEWORKS_VERSION=v0.64.0
-MPV_XCFRAMEWORKS_SHA256SUM=5392c229124d404ec235f21ce32aa6d4b698dfb8de03a14afca8e02fa1642421
+MPV_XCFRAMEWORKS_VERSION=v0.65.0
+MPV_XCFRAMEWORKS_SHA256SUM=d2dda14c6329efa2b5fce3ebcd153100dad8b88a2c2bc60027e3dc35381937f8
 
 TAR=tar
 TAR_WILDCARDS_FLAG := $(shell ${TAR} --version 2>&1 | grep -q 'GNU' && echo "--wildcards" || echo "")
@@ -13,7 +13,7 @@ SED_INPLACE_FLAG := $(shell ${SED} --version 2>&1 | grep -q 'GNU' && echo "" || 
 	mkdir -p .cache/xcframeworks
 	rm -f .cache/xcframeworks/*.tmp .cache/xcframeworks/*-ios-universal.tar.gz
 	curl -L \
-		https://github.com/Hilbert2048/libmpv-darwin-build/releases/download/v0.64.0/libmpv-xcframeworks_v0.64.0_ios-universal-video-default.tar.gz \
+		https://github.com/Hilbert2048/libmpv-darwin-build/releases/download/v0.65.0/libmpv-xcframeworks_v0.65.0_ios-universal-video-default.tar.gz \
 		-o .cache/xcframeworks/libmpv.tar.gz.tmp
 	shasum -a 256 -c <<< '${MPV_XCFRAMEWORKS_SHA256SUM}  .cache/xcframeworks/libmpv.tar.gz.tmp'
 	mv .cache/xcframeworks/libmpv.tar.gz.tmp .cache/xcframeworks/libmpv-xcframeworks-${MPV_XCFRAMEWORKS_VERSION}-ios-universal.tar.gz
