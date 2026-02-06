@@ -19,6 +19,7 @@ import 'tests/10.programmatic_fullscreen.dart';
 import 'tests/11.video_view_parameters.dart';
 import 'tests/12.preload_test.dart';
 import 'tests/13.ffmpeg_test.dart';
+import 'tests/14.douyin_stress_test.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -282,6 +283,29 @@ class PrimaryScreen extends StatelessWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const FFmpegTest(),
+                  ),
+                );
+              },
+            ),
+          if (!UniversalPlatform.isWeb)
+            ListTile(
+              title: const Text(
+                'douyin_stress_test.dart',
+                style: TextStyle(
+                    fontSize: 14.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: const Text(
+                '🔥 Real-world crash test with 50 1080p videos',
+                style: TextStyle(fontSize: 11.0, color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const DouyinStyleStressTest(),
                   ),
                 );
               },

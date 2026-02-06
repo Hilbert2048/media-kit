@@ -262,6 +262,74 @@ class _PreloadTestState extends State<PreloadTest> {
     setState(() {});
   }
 
+  /// Brutal stress test: 100 iterations of rapid preload → play → dispose
+  /// This test is designed to catch demux thread crashes (use-after-free in wakeup callbacks)
+  Future<void> _brutalStressTest(String url) async {
+    _log += '\n🔥🔥🔥 BRUTAL STRESS TEST STARTED 🔥🔥🔥\n';
+    _log += 'Goal: 100 iterations of rapid preload → play → dispose\n';
+    _log += 'This tests demux thread safety and wakeup callback cleanup\n';
+    setState(() {});
+
+    int successCount = 0;
+    int failCount = 0;
+
+    for (int i = 1; i <= 100; i++) {
+      try {
+        // Start preload
+        _startPreload(url);
+
+        // REDUCED: Wait even less time (50ms instead of 100ms)
+        // This increases the chance that demux thread is still in I/O
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        // Create player and play
+        _player = Player();
+        _videoController = VideoController(_player!);
+
+        // Open media (this should use preloaded demuxer if available)
+        await _player!.open(Media(url));
+
+        // CRITICAL: Dispose IMMEDIATELY without waiting!
+        // This maximizes the race condition window
+        // The demux thread is very likely still reading packets
+        await _player?.dispose();
+        _player = null;
+        _videoController = null;
+
+        successCount++;
+
+        // Log progress every 10 iterations
+        if (i % 10 == 0) {
+          _log += '[$i/100] ✅ Success: $successCount, Fail: $failCount\n';
+          setState(() {});
+        }
+      } catch (e) {
+        failCount++;
+        _log += '[$i/100] ❌ CRASH: $e\n';
+        setState(() {});
+
+        // If we get too many failures, stop the test
+        if (failCount > 5) {
+          _log += '⛔ Too many failures, stopping test\n';
+          break;
+        }
+      }
+    }
+
+    _log += '\n🏁 BRUTAL STRESS TEST COMPLETE 🏁\n';
+    _log += 'Total: 100 iterations\n';
+    _log += 'Success: $successCount ✅\n';
+    _log += 'Failures: $failCount ❌\n';
+
+    if (failCount == 0) {
+      _log += '🎉 PERFECT! No crashes detected!\n';
+    } else {
+      _log += '⚠️ Some failures occurred. Check logs above.\n';
+    }
+
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     // Auto-scroll log to bottom on every rebuild
@@ -350,6 +418,15 @@ class _PreloadTestState extends State<PreloadTest> {
                                   ),
                                   onPressed: () => _stressCycle(_testUrls[i]),
                                   child: const Text('⚡ Stress'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red.shade900,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  onPressed: () =>
+                                      _brutalStressTest(_testUrls[i]),
+                                  child: const Text('🔥 Brutal x100'),
                                 ),
                               ],
                             ),
